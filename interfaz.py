@@ -1,5 +1,3 @@
-from tokenize import String
-
 import pygame
 from pygame.locals import *
 from OpenGL.GL import *
@@ -9,7 +7,7 @@ import time
 
 
 class Circle:
-    def __init__(self, x, y, radius=0.05, color=(1.0, 0.0, 0.0)):
+    def __init__(self, x, y, radius=0.05, color=(0.0, 1.0, 0.0)):
         self.x = x
         self.y = y
         self.radius = radius
@@ -21,7 +19,7 @@ class Circle:
         glTranslatef(self.x, self.y, 0.0)
         glBegin(GL_TRIANGLE_FAN)
         glVertex2f(0, 0)
-        for i in range(50 + 1):
+        for i in range(51):
             angle = 2 * math.pi * i / 50
             x = self.radius * math.cos(angle)
             y = self.radius * math.sin(angle)
@@ -84,8 +82,16 @@ def draw_background(texture):
     glEnd()
 
 
+def cuadrados_medios_una_parada(semilla):
+    cuadrado = semilla ** 2
+    cuadrado_str = str(cuadrado).zfill(8)
+    digitos_medios = int(cuadrado_str[2:6])
+    pasajeros = digitos_medios % 41
+    return pasajeros if pasajeros != 0 else 1234 % 41
+
+
 def main():
-    global display  # Necesario para la función draw_text
+    global display
     init()
     display = (1087, 361)
     textura = load_texture("C:\\Users\\emyva\\OneDrive\\Escritorio\\10mo semestre\\FIS\\mapa1.png")
@@ -104,6 +110,10 @@ def main():
     last_change_time = time.time()
     state = 'waiting'
 
+    lugares_ocupados = 0
+    lugares_disponibles = 40
+    metodo_aplicado = False  # <-- control para ejecutar cuadrados_medios_una_parada una vez después del primer círculo
+
     running = True
     while running:
         for event in pygame.event.get():
@@ -116,24 +126,33 @@ def main():
 
         current_time = time.time()
 
-        lugares_disponibles=40
-        lugares_ocupados=0
-
         if state == 'waiting' and current_time - last_change_time >= 10:
-            circles[current_index].color = (0.0, 1.0, 0.0)
-            last_change_time = current_time
-            state = 'green'
-        elif state == 'green' and current_time - last_change_time >= 5:
             circles[current_index].color = (1.0, 0.0, 0.0)
             last_change_time = current_time
-            current_index =(current_index + 1) % len(circles)
+            state = 'green'
+
+        elif state == 'green' and current_time - last_change_time >= 5:
+            circles[current_index].color = (0.0, 1.0, 0.0)
+
+            # Aplicar metodo después de que el primer círculo se vuelva rojo
+            if current_index == 0 and not metodo_aplicado:
+                semilla = 1
+                lugares_ocupados = cuadrados_medios_una_parada(semilla)
+                lugares_disponibles = 40 - lugares_ocupados
+                metodo_aplicado = True  # <-- se ejecuta solo una vez
+
+            last_change_time = current_time
+            current_index = (current_index + 1) % len(circles)
             state = 'waiting'
 
         for circle in circles:
             circle.draw()
 
-        draw_text("Lugares Disponibles: "+str(lugares_disponibles),-0.9,-0.7)  # Dibuja el texto en el centro
+        draw_text("Lugares Disponibles: " + str(lugares_disponibles), -0.9, -0.7)
         draw_text("Lugares Ocupados: " + str(lugares_ocupados), -0.9, -0.9)
+
+        print("Lugares Disponibles: " + str(lugares_disponibles))
+        print("Lugares Ocupados: " + str(lugares_ocupados))
 
         pygame.display.flip()
         pygame.time.wait(10)
